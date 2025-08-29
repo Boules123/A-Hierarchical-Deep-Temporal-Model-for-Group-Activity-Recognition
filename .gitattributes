@@ -1,0 +1,64 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.py text eol=lf
+
+# Configuration files
+*.yml text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+*.bash text eol=lf
+*.zsh text eol=lf
+*.fish text eol=lf
+
+# License and README files
+LICENSE text eol=lf
+LICENCE text eol=lf
+*.license text eol=lf
+README text eol=lf
+
+# Git files
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+# Binary files
+# Images
+*.png binary
+
+# Documents
+*.pdf binary
+
+# Python specific
+# Mark Python files for language detection
+*.py linguist-language=Python
+
+# Configuration files language detection
+*.yml linguist-language=YAML
+
+# Exclude certain directories from language statistics
+outputs/** linguist-generated=true
+docs/** linguist-documentation=true
+tests/** linguist-generated=true
+
+.gitignore export-ignore
+.gitattributes export-ignore
+.github/ export-ignore
+.vscode/ export-ignore
+.qodo/ export-ignore
+tests/ export-ignore
+*.log export-ignore
+.pytest_cache/ export-ignore
+__pycache__/ export-ignore
+*.pyc export-ignore
+*.pyo export-ignore
+*.pyd export-ignore
+.coverage export-ignore
+htmlcov/ export-ignore
+.tox/ export-ignore
+.mypy_cache/ export-ignore
