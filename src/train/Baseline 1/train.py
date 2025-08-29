@@ -32,14 +32,14 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, epoch, writer, logger):
+def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer, device, epoch):
     """Runs a single training epoch."""
     model.train()
     total_loss = 0
     correct_preds = 0
     total_samples = 0
     
-    for batch_idx, (inputs, targets) in enumerate(train_loader):
+    for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
 
@@ -62,14 +62,14 @@ def train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, e
         
         if batch_idx % 50 == 0:
             current_acc = 100. * correct_preds / total_samples
-            logger.info(f'Epoch: {epoch+1} | Batch: {batch_idx}/{len(train_loader)} | Loss: {loss.item():.4f} | Acc: {current_acc:.2f}%')
+            logger.info(f'Epoch: {epoch+1} | Batch: {batch_idx}/{len(loader)} | Loss: {loss.item():.4f} | Acc: {current_acc:.2f}%')
             
             # Log batch-level metrics to TensorBoard
-            step = epoch * len(train_loader) + batch_idx
+            step = epoch * len(loader) + batch_idx
             writer.add_scalar('Training/Batch_Loss', loss.item(), step)
             writer.add_scalar('Training/Batch_Accuracy', current_acc, step)
             
-    epoch_loss = total_loss / len(train_loader)
+    epoch_loss = total_loss / len(loader)
     epoch_acc = 100. * correct_preds / total_samples
 
     # Log epoch-level metrics to TensorBoard
@@ -144,14 +144,14 @@ def fit(config_path, resume_train=None):
     else:
         # Starting a new experiment (start train)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        exp_name = f"{config.experiment.name_group}_V{config.experiment.version}_{timestamp}"
+        exp_name = f"{config.experiment.name}_V{config.experiment.version}_{timestamp}"
         exp_dir = os.path.join('/kaggle/working/', exp_name)
         os.makedirs(exp_dir, exist_ok=True)
         logger = setup_logging(exp_dir)
         logger.info(f"Starting new experiment: {exp_name}")
         
     writer = SummaryWriter(log_dir=os.path.join(exp_dir, 'tensorboard'))
-    logger.info(f"Using device: {device}. Seed: {config.experiment.seed}")
+    logger.info(f"Using device: {device}. Seed: {config.system.seed}")
 
     if not resume_train: 
         model = SceneClassifier_B1()
@@ -206,9 +206,9 @@ def fit(config_path, resume_train=None):
     logger.info(f"Training dataset size: {len(train_dataset)}")
     logger.info(f"Validation dataset size: {len(val_dataset)}")
 
-    train_loader = DataLoader(
+    loader = DataLoader(
         train_dataset,
-        batch_size=config.training.batch_size,
+        batch_size=config.training.group_activity.batch_size,
         shuffle=True,
         pin_memory=True,
         num_workers=4, 
@@ -216,7 +216,7 @@ def fit(config_path, resume_train=None):
     
     val_loader = DataLoader(
         val_dataset,
-        batch_size=config.training.batch_size,
+        batch_size=config.training.group_activity.batch_size,
         shuffle=False,
         pin_memory=True,
         num_workers=4,
@@ -230,7 +230,7 @@ def fit(config_path, resume_train=None):
     for epoch in range(start_epoch, config.training.epochs):
         logger.info(f"\n--- Epoch {epoch+1}/{config.training.epochs} ---")
         
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, epoch, writer, logger)
+        train_loss, train_acc = train_one_epoch(model, loader, criterion, optimizer, scaler, device, epoch, writer, logger)
         logger.info(f"Epoch {epoch+1} | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
 
         val_loss, val_acc = validate_model(model, val_loader, criterion, device, epoch, writer, logger, config.dataset.label_classes.group_activity)

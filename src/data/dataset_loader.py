@@ -205,7 +205,7 @@ class GroupActivityDataset(BaseDataset):
                     samples.append(sample)
         return samples
     
-    def _extract_person_crops(self, frame: np.ndarray, boxes: List[BoxInfo]) -> List[torch.Tensor]:
+    def _extract_person_crops(self, frame: np.ndarray, boxes: List[Any]) -> List[torch.Tensor]:
         """Extracts and transforms all person crops from a single frame."""
         person_crops = []
         for box in boxes:
@@ -213,8 +213,13 @@ class GroupActivityDataset(BaseDataset):
             crop = frame[y_min:y_max, x_min:x_max]
             
             if self.transform:
-                crop = self.transform(image=crop)['image']
-            person_crops.append(torch.from_numpy(crop).permute(2, 0, 1))
+                # The transform handles conversion to a tensor
+                crop_tensor = self.transform(image=crop)['image']
+            else:
+                # Manually convert if no transform is applied
+                crop_tensor = torch.from_numpy(crop).permute(2, 0, 1)
+            
+            person_crops.append(crop_tensor)
         return person_crops
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -225,10 +230,14 @@ class GroupActivityDataset(BaseDataset):
         if not self.crops and not self.seq:
             frame = self._load_frame(sample['video_id'], sample['clip_dir'], sample['frame_id'])
             if self.transform:
-                frame = self.transform(image=frame)['image']
-            return torch.from_numpy(frame).permute(2, 0, 1), group_label
+                # The transform already returns a tensor in the correct shape
+                frame_tensor = self.transform(image=frame)['image']
+            else:
+                # Manually convert if no transform is present
+                frame_tensor = torch.from_numpy(frame).permute(2, 0, 1)
+            return frame_tensor, group_label
 
-            #seq of frames for B4 [t, c, h, w]
+        # seq of frames for B4 [t, c, h, w]
         elif not self.crops and self.seq: 
             clip_frames = []
             
@@ -236,18 +245,18 @@ class GroupActivityDataset(BaseDataset):
                 frame = self._load_frame(sample['video_id'], sample['clip_dir'], frame_id)
                 
                 if self.transform:
-                    frame = self.transform(image=frame)['image']
+                    frame_tensor = self.transform(image=frame)['image']
+                else:
+                    frame_tensor = torch.from_numpy(frame).permute(2, 0, 1)
                 
-                clip_frames.append(torch.from_numpy(frame).permute(2, 0, 1))
+                clip_frames.append(frame_tensor)
             
             return torch.stack(clip_frames), group_label.expand(len(clip_frames), -1)
 
-        #crops players from frames for B3 [n, c, h, w]
+        # crops players from frames for B3 [n, c, h, w]
         elif self.crops and not self.seq:
             frame = self._load_frame(sample['video_id'], sample['clip_dir'], sample['frame_id'])
-            
             crops = self._extract_person_crops(frame, sample['boxes'])
-            
             return torch.stack(crops), group_label
 
         else: # players crops and seq of players for B5, B7, B8, B6 [n, t, c, h, w]
