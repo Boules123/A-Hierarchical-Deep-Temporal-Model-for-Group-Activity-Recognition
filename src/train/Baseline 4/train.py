@@ -82,8 +82,6 @@ def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer,
     return epoch_acc, epoch_loss
 
 
-
-
 def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, class_names):
     """Validate the model for one epoch."""
     model.eval()
@@ -148,14 +146,14 @@ def fit(config_path, resume_train=None):
     else:
         # Starting a new experiment (start train)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        exp_name = f"{config.experiment.name_group}_V{config.experiment.version}_{timestamp}"
+        exp_name = f"{config.experiment.name}_V{config.experiment.version}_{timestamp}"
         exp_dir = os.path.join('/kaggle/working/', exp_name)
         os.makedirs(exp_dir, exist_ok=True)
         logger = setup_logging(exp_dir)
         logger.info(f"Starting new experiment: {exp_name}")
         
     writer = SummaryWriter(log_dir=os.path.join(exp_dir, 'tensorboard'))
-    logger.info(f"Using device: {device}. Seed: {config.experiment.seed}")
+    logger.info(f"Using device: {device}. Seed: {config.system.seed}")
     
     if not resume_train: # Initialize if not loaded from checkpoint
         model = SceneTempClassifier_B4()
@@ -214,7 +212,7 @@ def fit(config_path, resume_train=None):
 
     train_loader = DataLoader(
         train_dataset,
-        batch_size=config.training.batch_size,
+        batch_size=config.training.group_activity.batch_size,
         shuffle=True,
         pin_memory=True,
         num_workers=4, 
@@ -223,7 +221,7 @@ def fit(config_path, resume_train=None):
     
     val_loader = DataLoader(
         val_dataset,
-        batch_size=config.training.batch_size,
+        batch_size=config.training.group_activity.batch_size,
         shuffle=False,
         pin_memory=True,
         num_workers=4,
@@ -238,10 +236,9 @@ def fit(config_path, resume_train=None):
     for epoch in range(start_epoch, config.training.epochs):
         logger.info(f"\n--- Epoch {epoch+1}/{config.training.epochs} ---")
         
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, epoch, writer, logger)
-        logger.info(f"Epoch {epoch+1} | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
+        train_loss, train_acc = train_one_epoch(scaler, writer, logger, model, train_loader, criterion, optimizer, device, epoch)
 
-        val_loss, val_acc = validate_model(model, val_loader, criterion, device, epoch, writer, logger, config.dataset.label_classes.group_activity)
+        val_acc, val_loss = val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, config.dataset.label_classes.group_activity)
 
         scheduler.step(val_loss)
         
@@ -252,7 +249,7 @@ def fit(config_path, resume_train=None):
             logger.info(f"New best validation accuracy: {best_val_acc:.2f}%! Saving model...")
         
         save_checkpoint({
-            'epoch': epoch,
+            'epoch': epoch + 1,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'val_acc': val_acc,
@@ -267,6 +264,7 @@ def fit(config_path, resume_train=None):
         
     writer.close()
     logger.info("Training completed successfully.")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Group Activity Script")

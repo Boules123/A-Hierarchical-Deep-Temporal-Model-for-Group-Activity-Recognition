@@ -32,7 +32,7 @@ training:
   patience: 10
   learning_rate: 0.0001
   optimizer: "AdamW" 
-  epochs: 100
+  epochs: 20
   log_interval: 50 
   group_activity:
     batch_size: 4

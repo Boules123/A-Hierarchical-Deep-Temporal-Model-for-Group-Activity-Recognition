@@ -11,7 +11,8 @@ from data import GroupActivityDataset, ACTIVITIES_LABELS
 from eval import evaluate_model
 
 
-def test_model():
+def test_model(args):
+    """Test the model."""
     config = load_config(args.config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")

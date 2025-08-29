@@ -34,6 +34,7 @@ def collate_fn(batch):
 
 
 def test_model(args):
+    """Test the model."""
     config = load_config(args.config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -45,7 +46,7 @@ def test_model(args):
     
     model = SceneClassifier_B3(model_person).to(device)
     model = load_checkpoint(
-        checkpoint_path=args.checkpoint, 
+        checkpoint_path=args.best_model_path, 
         model=model,
         optimizer=None, 
         device=device
@@ -101,7 +102,7 @@ if __name__ == "__main__":
         help="Path to the configuration file (e.g., 'config.yaml')."
     )
     parser.add_argument(
-        "--checkpoint", 
+        "--best_model_path", 
         type=str, 
         default=None,
         required=True,
