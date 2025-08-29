@@ -12,6 +12,6 @@ class PersonClassifier(nn.Module):
             nn.Linear(in_features=2048, out_features=num_classes))
 
     def forward(self, x):
-        x = self.backbone(x) 
+        x = self.backbone(x) # [b, num_classes]
         return x
 

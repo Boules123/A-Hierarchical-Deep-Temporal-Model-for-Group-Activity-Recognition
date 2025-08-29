@@ -4,6 +4,8 @@ class SceneClassifier_B1(nn.Module):
     def __init__(self, num_classes=8):
         super(SceneClassifier_B1, self).__init__()
         self.backbone = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+
+        # replace the fc layer to match the num_classes
         self.backbone.fc = nn.Sequential(
             nn.Dropout(0.5),
             nn.Linear(2048, num_classes)
@@ -18,8 +20,9 @@ class SceneClassifier_B3(nn.Module):
     def __init__(self, model_person , num_classes=8):
         super(SceneClassifier_B3, self).__init__()
         self.backbone = model_person.backbone
-        self.backbone = nn.Sequential(*list(self.backbone.children())[:-1]) # remove the fc layer
-        
+        self.backbone = nn.Sequential(*list(self.backbone.children())[:-1]) # remove the fc layer classification
+
+        # freeze the backbone parameters 
         for param in self.backbone.parameters():
             param.requires_grad = False
 
@@ -45,6 +48,7 @@ class SceneClassifier_B5(nn.Module):
     def __init__(self, player_classifier_model, num_classes=8):
         super(SceneClassifier_B5, self).__init__()
         
+        # use the trained models from PersonTempClassifier
         self.resnet50 = player_classifier_model.backbone
         self.lstm = player_classifier_model.lstm
 
@@ -52,7 +56,8 @@ class SceneClassifier_B5(nn.Module):
             for param in module.parameters():
                 param.requires_grad = False
 
-        self.pool = nn.AdaptiveMaxPool2d((1, 2048))  # [b, 12, hidden_size] -> [b, 1, 2048]
+        # max pool over 12 players [b, 12, hidden_size] -> [b, 1, 2048]
+        self.pool = nn.AdaptiveMaxPool2d((1, 2048))  
 
         self.fc = nn.Sequential(
             nn.Linear(2048, 512),

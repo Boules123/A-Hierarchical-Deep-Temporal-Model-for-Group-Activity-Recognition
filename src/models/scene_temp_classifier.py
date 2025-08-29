@@ -5,6 +5,7 @@ class SceneTempClassifier_B4(nn.Module):
     def __init__(self, num_classes=8):
         super(SceneTempClassifier_B4, self).__init__()
         
+        # trained models 
         self.backbone = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
         self.backbone = nn.Sequential(*list(self.backbone.children())[:-1])
         
@@ -42,7 +43,7 @@ class SceneTempClassifier_B6(nn.Module):
         for param in self.backbone.parameters():
             param.requires_grad = False
 
-        self.pool = nn.AdaptiveMaxPool1d(1)
+        self.pool = nn.AdaptiveMaxPool1d(1) #max pool
         
         self.lstm = nn.LSTM(
             input_size=input_dim,
@@ -71,7 +72,7 @@ class SceneTempClassifier_B6(nn.Module):
         x = x.squeeze(dim=2) #[b*t, 2048]
         
         x = x.view(b, t, -1) 
-        x, (_,_) = self.lstm(x)
+        x, (_,_) = self.lstm(x) #[b, t, hidden_dim]
         x = x[:, -1, :] #take last step -> [b, hidden_dim]
 
         x = self.fc(x) #[b, num_classes]

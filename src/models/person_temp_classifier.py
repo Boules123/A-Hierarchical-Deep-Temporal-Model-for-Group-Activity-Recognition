@@ -4,8 +4,9 @@ class PersonTempClassifier(nn.Module):
     def __init__(self, input_dim=2048, hidden_dim=512, num_classes=9):
         super(PersonTempClassifier, self).__init__()
         
+        # pretrained model resnet50
         resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
-        self.backbone = nn.Sequential(*list(resnet.children())[:-1])
+        self.backbone = nn.Sequential(*list(resnet.children())[:-1]) # remove fc layer classification
         
         self.lstm = nn.LSTM(
             input_size=input_dim,
