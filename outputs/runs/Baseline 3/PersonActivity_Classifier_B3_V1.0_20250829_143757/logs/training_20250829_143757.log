@@ -1,0 +1,59 @@
+2025-08-29 14:37:57,526 [INFO] Starting new experiment: PersonActivity_Classifier_B3_V1.0_20250829_143757
+2025-08-29 14:37:57,529 [INFO] Using device: cuda. Seed: 42
+2025-08-29 14:38:10,512 [INFO] Training dataset size: 231327
+2025-08-29 14:38:10,513 [INFO] Validation dataset size: 143829
+2025-08-29 14:38:10,515 [INFO] Starting training process
+2025-08-29 14:38:10,515 [INFO] 
+--- Epoch 1/10 ---
+2025-08-29 14:38:17,112 [INFO] Epoch: 1 | Batch: 0/1808 | Loss: 2.2282 | Acc: 9.38%
+2025-08-29 14:38:56,623 [INFO] Epoch: 1 | Batch: 50/1808 | Loss: 1.1074 | Acc: 63.01%
+2025-08-29 14:39:38,168 [INFO] Epoch: 1 | Batch: 100/1808 | Loss: 0.9438 | Acc: 66.00%
+2025-08-29 14:40:17,830 [INFO] Epoch: 1 | Batch: 150/1808 | Loss: 0.8784 | Acc: 67.77%
+2025-08-29 14:40:57,352 [INFO] Epoch: 1 | Batch: 200/1808 | Loss: 0.7279 | Acc: 69.13%
+2025-08-29 14:41:34,369 [INFO] Epoch: 1 | Batch: 250/1808 | Loss: 0.8148 | Acc: 70.22%
+2025-08-29 14:42:12,940 [INFO] Epoch: 1 | Batch: 300/1808 | Loss: 0.6771 | Acc: 71.01%
+2025-08-29 14:42:50,201 [INFO] Epoch: 1 | Batch: 350/1808 | Loss: 0.6646 | Acc: 71.88%
+2025-08-29 14:43:29,446 [INFO] Epoch: 1 | Batch: 400/1808 | Loss: 0.6637 | Acc: 72.44%
+2025-08-29 14:44:06,229 [INFO] Epoch: 1 | Batch: 450/1808 | Loss: 0.6857 | Acc: 73.07%
+2025-08-29 14:44:43,771 [INFO] Epoch: 1 | Batch: 500/1808 | Loss: 0.6528 | Acc: 73.66%
+2025-08-29 14:45:20,732 [INFO] Epoch: 1 | Batch: 550/1808 | Loss: 0.7588 | Acc: 74.12%
+2025-08-29 14:45:58,009 [INFO] Epoch: 1 | Batch: 600/1808 | Loss: 0.5801 | Acc: 74.61%
+2025-08-29 14:46:34,663 [INFO] Epoch: 1 | Batch: 650/1808 | Loss: 0.5264 | Acc: 75.04%
+2025-08-29 14:47:11,704 [INFO] Epoch: 1 | Batch: 700/1808 | Loss: 0.6158 | Acc: 75.41%
+2025-08-29 14:47:48,354 [INFO] Epoch: 1 | Batch: 750/1808 | Loss: 0.6029 | Acc: 75.73%
+2025-08-29 14:48:25,358 [INFO] Epoch: 1 | Batch: 800/1808 | Loss: 0.5842 | Acc: 75.98%
+2025-08-29 14:49:02,238 [INFO] Epoch: 1 | Batch: 850/1808 | Loss: 0.6059 | Acc: 76.25%
+2025-08-29 14:49:39,283 [INFO] Epoch: 1 | Batch: 900/1808 | Loss: 0.6372 | Acc: 76.55%
+2025-08-29 14:50:16,278 [INFO] Epoch: 1 | Batch: 950/1808 | Loss: 0.4889 | Acc: 76.79%
+2025-08-29 14:50:53,667 [INFO] Epoch: 1 | Batch: 1000/1808 | Loss: 0.7222 | Acc: 77.00%
+2025-08-29 14:51:30,194 [INFO] Epoch: 1 | Batch: 1050/1808 | Loss: 0.3902 | Acc: 77.23%
+2025-08-29 14:52:07,656 [INFO] Epoch: 1 | Batch: 1100/1808 | Loss: 0.5771 | Acc: 77.48%
+2025-08-29 14:52:44,512 [INFO] Epoch: 1 | Batch: 1150/1808 | Loss: 0.4908 | Acc: 77.70%
+2025-08-29 14:53:21,861 [INFO] Epoch: 1 | Batch: 1200/1808 | Loss: 0.5649 | Acc: 77.87%
+2025-08-29 14:53:58,602 [INFO] Epoch: 1 | Batch: 1250/1808 | Loss: 0.4347 | Acc: 78.04%
+2025-08-29 14:54:35,785 [INFO] Epoch: 1 | Batch: 1300/1808 | Loss: 0.5029 | Acc: 78.19%
+2025-08-29 14:55:13,359 [INFO] Epoch: 1 | Batch: 1350/1808 | Loss: 0.4644 | Acc: 78.39%
+2025-08-29 14:55:51,122 [INFO] Epoch: 1 | Batch: 1400/1808 | Loss: 0.4765 | Acc: 78.53%
+2025-08-29 14:56:28,508 [INFO] Epoch: 1 | Batch: 1450/1808 | Loss: 0.4055 | Acc: 78.68%
+2025-08-29 14:57:06,385 [INFO] Epoch: 1 | Batch: 1500/1808 | Loss: 0.4445 | Acc: 78.84%
+2025-08-29 14:57:43,467 [INFO] Epoch: 1 | Batch: 1550/1808 | Loss: 0.5458 | Acc: 78.99%
+2025-08-29 14:58:21,158 [INFO] Epoch: 1 | Batch: 1600/1808 | Loss: 0.4053 | Acc: 79.15%
+2025-08-29 14:58:57,870 [INFO] Epoch: 1 | Batch: 1650/1808 | Loss: 0.4023 | Acc: 79.29%
+2025-08-29 14:59:34,765 [INFO] Epoch: 1 | Batch: 1700/1808 | Loss: 0.4158 | Acc: 79.44%
+2025-08-29 15:00:11,901 [INFO] Epoch: 1 | Batch: 1750/1808 | Loss: 0.4589 | Acc: 79.56%
+2025-08-29 15:00:49,128 [INFO] Epoch: 1 | Batch: 1800/1808 | Loss: 0.4445 | Acc: 79.70%
+2025-08-29 15:00:52,880 [INFO] Epoch 1 completed. Average Loss: 0.6126, Accuracy: 79.71%
+2025-08-29 15:13:08,683 [INFO] Validation Epoch 1 completed. Average Loss: 0.6896, Accuracy: 77.02%, F1 Score: 0.78
+2025-08-29 15:13:08,687 [INFO] New best validation accuracy: 77.02%! Saving model...
+2025-08-29 15:13:09,490 [INFO] Current learning rate: 0.0001
+2025-08-29 15:13:09,491 [INFO] 
+--- Epoch 2/10 ---
+2025-08-29 15:13:13,047 [INFO] Epoch: 2 | Batch: 0/1808 | Loss: 0.4504 | Acc: 85.16%
+2025-08-29 15:13:51,116 [INFO] Epoch: 2 | Batch: 50/1808 | Loss: 0.4484 | Acc: 86.86%
+2025-08-29 15:14:29,199 [INFO] Epoch: 2 | Batch: 100/1808 | Loss: 0.3456 | Acc: 86.79%
+2025-08-29 15:15:07,304 [INFO] Epoch: 2 | Batch: 150/1808 | Loss: 0.3400 | Acc: 86.97%
+2025-08-29 15:15:46,767 [INFO] Epoch: 2 | Batch: 200/1808 | Loss: 0.4004 | Acc: 86.95%
+2025-08-29 15:16:24,879 [INFO] Epoch: 2 | Batch: 250/1808 | Loss: 0.4369 | Acc: 87.14%
+2025-08-29 15:17:04,034 [INFO] Epoch: 2 | Batch: 300/1808 | Loss: 0.4627 | Acc: 87.15%
+2025-08-29 15:17:42,325 [INFO] Epoch: 2 | Batch: 350/1808 | Loss: 0.2730 | Acc: 87.18%
+2025-08-29 15:18:20,616 [INFO] Epoch: 2 | Batch: 400/1808 | Loss: 0.3713 | Acc: 87.24%

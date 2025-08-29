@@ -34,6 +34,8 @@ def set_seed(seed):
 
 
 def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer, device, epoch):
+    """Train the model for one epoch."""
+
     model.train()
     total_loss = 0
     total_samples = 0
@@ -79,9 +81,9 @@ def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer,
     return epoch_acc, epoch_loss
 
 
-
-
 def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, class_names):
+    """Validate the model for one epoch."""
+    
     model.eval()
     total_loss = 0
     total_samples = 0
@@ -120,7 +122,6 @@ def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, c
     logger.info(f'Validation Epoch {epoch+1} completed. Average Loss: {val_loss:.4f}, Accuracy: {val_acc:.2f}%, F1 Score: {f1:.2f}')
 
     return val_acc, val_loss
-
 
 
 def fit(config_path, resume_train=None):
@@ -207,7 +208,7 @@ def fit(config_path, resume_train=None):
     logger.info(f"Training dataset size: {len(train_dataset)}")
     logger.info(f"Validation dataset size: {len(val_dataset)}")
 
-    loader = DataLoader(
+    train_loader = DataLoader(
         train_dataset,
         batch_size=config.training.group_activity.batch_size,
         shuffle=True,
@@ -231,7 +232,7 @@ def fit(config_path, resume_train=None):
     for epoch in range(start_epoch, config.training.epochs):
         logger.info(f"\n--- Epoch {epoch+1}/{config.training.epochs} ---")
         
-        train_loss, train_acc = train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer, device, epoch)
+        train_loss, train_acc = train_one_epoch(scaler, writer, logger, model, train_loader, criterion, optimizer, device, epoch)
 
         val_acc, val_loss = val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, config.dataset.label_classes.group_activity)
 

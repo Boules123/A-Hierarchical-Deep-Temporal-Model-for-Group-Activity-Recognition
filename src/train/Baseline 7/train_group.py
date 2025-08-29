@@ -35,18 +35,19 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
 
 
-def train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, epoch, writer, logger):
-    """Runs a single training epoch."""
+def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer, device, epoch):
+    """Train the model for one epoch."""
+    
     model.train()
     total_loss = 0
-    correct_preds = 0
     total_samples = 0
+    total_correct = 0
     
-    for batch_idx, (inputs, targets) in enumerate(train_loader):
+    for idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.to(device), targets.to(device)
+        
         optimizer.zero_grad()
         
-        # use mixed precision to speed up training and reduce memory usage
         with autocast(dtype=torch.float16):
             outputs = model(inputs)
             loss = criterion(outputs, targets)
@@ -56,44 +57,46 @@ def train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, e
         scaler.update()
         
         total_loss += loss.item()
-
-        # Calculate accuracy
-        pred = outputs.argmax(dim=1)
-        target = targets.argmax(dim=1)
-        total_samples += targets.size(0)
-        correct_preds += pred.eq(target).sum().item()
+        total_samples += inputs.size(0)
         
-        if batch_idx % 50 == 0:
-            current_acc = 100. * correct_preds / total_samples
-            logger.info(f'Epoch: {epoch+1} | Batch: {batch_idx}/{len(train_loader)} | Loss: {loss.item():.4f} | Acc: {current_acc:.2f}%')
-            
-            # Log batch-level metrics to TensorBoard
-            step = epoch * len(train_loader) + batch_idx
-            writer.add_scalar('Training/Batch_Loss', loss.item(), step)
-            writer.add_scalar('Training/Batch_Accuracy', current_acc, step)
-            
-    epoch_loss = total_loss / len(train_loader)
-    epoch_acc = 100. * correct_preds / total_samples
+        outputs = outputs.argmax(dim=1)
+        target = targets.argmax(dim=1) if targets.ndim > 1 else targets
+
+        total_correct += outputs.eq(target).sum().item()
+        
+        if idx % 50 == 0:
+            current_acc = 100. * total_correct / total_samples
+            logger.info(f'Epoch: {epoch+1} | Batch: {idx}/{len(loader)} | Loss: {loss.item():.4f} | Acc: {current_acc:.2f}%')
+
+            step = epoch * len(loader) + idx
+            writer.add_scalar("Loss/train", loss.item(), step)
+            writer.add_scalar("Accuracy/train", current_acc, step)
+
+        epoch_loss = total_loss / len(loader)
+        writer.add_scalar("Loss/train/epoch", epoch_loss, epoch)
+        
+        epoch_acc = 100. * total_correct / total_samples
+        writer.add_scalar("Accuracy/train/epoch", epoch_acc, epoch)
+
+    logger.info(f'Epoch {epoch+1} completed. Average Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
     
-    # Log epoch-level metrics to TensorBoard
-    writer.add_scalar('Training/Epoch_Loss', epoch_loss, epoch)
-    writer.add_scalar('Training/Epoch_Accuracy', epoch_acc, epoch)
-    
-    return epoch_loss, epoch_acc
+    return epoch_acc, epoch_loss
 
 
 
-def validate_model(model, val_loader, criterion, device, epoch, writer, logger, class_names):
-    """Validates the model on the validation set."""
+
+def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, class_names):
+    """Validate the model for one epoch."""
     model.eval()
     total_loss = 0
-    correct_preds = 0
     total_samples = 0
-    
-    y_true, y_pred = [], []
+    total_correct = 0
+
+    y_true = []
+    y_pred = []
     
     with torch.no_grad():
-        for inputs, targets in val_loader:
+        for idx, (inputs, targets) in enumerate(val_loader):
             inputs, targets = inputs.to(device), targets.to(device)
 
             with autocast(dtype=torch.float16):
@@ -101,29 +104,27 @@ def validate_model(model, val_loader, criterion, device, epoch, writer, logger, 
                 loss = criterion(outputs, targets)
 
             total_loss += loss.item()
-            
-            # For Metrics
-            pred = outputs.argmax(dim=1)
-            target = targets.argmax(dim=1)
-            total_samples += targets.size(0)
-            correct_preds += pred.eq(target).sum().item()
-            
+            total_samples += inputs.size(0)
+
+            outputs = outputs.argmax(dim=1)
+            target = targets.argmax(dim=1) if targets.ndim > 1 else targets
+
+            total_correct += outputs.eq(target).sum().item()
+
             y_true.extend(target.cpu().numpy())
-            y_pred.extend(pred.cpu().numpy())
+            y_pred.extend(outputs.cpu().numpy())
             
-    avg_loss = total_loss / len(val_loader)
-    accuracy = 100. * correct_preds / total_samples
-    f1 = get_f1_score(y_true, y_pred, average="weighted")
-    
-    logger.info(f"Epoch {epoch+1} | Valid Loss: {avg_loss:.4f} | Accuracy: {accuracy:.2f}% | F1 Score: {f1:.4f}")
-    writer.add_scalar('Validation/Loss', avg_loss, epoch)
-    writer.add_scalar('Validation/Accuracy', accuracy, epoch)
-    writer.add_scalar('Validation/F1_Score', f1, epoch)
-    
-    fig = plot_confusion_matrix(y_true, y_pred, class_names, save_path=None)
-    writer.add_figure('Validation/Confusion_Matrix', fig, epoch)
-    
-    return avg_loss, accuracy
+    val_loss = total_loss / len(val_loader)
+    val_acc = 100. * total_correct / total_samples
+    f1 = get_f1_score(y_pred, y_true, average="weighted")
+
+    writer.add_scalar("Loss/val/epoch", val_loss, epoch)
+    writer.add_scalar("Accuracy/val/epoch", val_acc, epoch)
+    writer.add_scalar("F1/val/epoch", f1, epoch)
+
+    logger.info(f'Validation Epoch {epoch+1} completed. Average Loss: {val_loss:.4f}, Accuracy: {val_acc:.2f}%, F1 Score: {f1:.2f}')
+
+    return val_acc, val_loss
 
 
 def fit(config_path, checkpoint_path=None, resume_train=None):

@@ -40,18 +40,19 @@ CHECKPOINT_PATH = ...
 RESUME_TRAIN_PATH = ...
 
 
-def train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, epoch, writer, logger):
-    """Runs a single training epoch."""
+def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer, device, epoch):
+    """Train the model for one epoch."""
+    
     model.train()
     total_loss = 0
-    correct_preds = 0
     total_samples = 0
+    total_correct = 0
     
-    for batch_idx, (inputs, targets) in enumerate(train_loader):
+    for idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.to(device), targets.to(device)
+        
         optimizer.zero_grad()
         
-        # use mixed precision to speed up training and reduce memory usage
         with autocast(dtype=torch.float16):
             outputs = model(inputs)
             loss = criterion(outputs, targets)
@@ -61,44 +62,44 @@ def train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, e
         scaler.update()
         
         total_loss += loss.item()
-
-        # Calculate accuracy
-        predicted = outputs.argmax(dim=1)
-        target_class = targets.argmax(dim=1)
-        total_samples += targets.size(0)
-        correct_preds += predicted.eq(target_class).sum().item()
+        total_samples += inputs.size(0)
         
-        if batch_idx % 50 == 0:
-            current_acc = 100. * correct_preds / total_samples
-            logger.info(f'Epoch: {epoch+1} | Batch: {batch_idx}/{len(train_loader)} | Loss: {loss.item():.4f} | Acc: {current_acc:.2f}%')
+        outputs = outputs.argmax(dim=1)
+        target = targets.argmax(dim=1) if targets.ndim > 1 else targets
 
-            # Log batch-level metrics to TensorBoard
-            step = epoch * len(train_loader) + batch_idx
-            writer.add_scalar('Training/Batch_Loss', loss.item(), step)
-            writer.add_scalar('Training/Batch_Accuracy', current_acc, step)
-            
-    epoch_loss = total_loss / len(train_loader)
-    epoch_acc = 100. * correct_preds / total_samples
+        total_correct += outputs.eq(target).sum().item()
+        
+        if idx % 50 == 0:
+            current_acc = 100. * total_correct / total_samples
+            logger.info(f'Epoch: {epoch+1} | Batch: {idx}/{len(loader)} | Loss: {loss.item():.4f} | Acc: {current_acc:.2f}%')
+
+            step = epoch * len(loader) + idx
+            writer.add_scalar("Loss/train", loss.item(), step)
+            writer.add_scalar("Accuracy/train", current_acc, step)
+
+        epoch_loss = total_loss / len(loader)
+        writer.add_scalar("Loss/train/epoch", epoch_loss, epoch)
+        
+        epoch_acc = 100. * total_correct / total_samples
+        writer.add_scalar("Accuracy/train/epoch", epoch_acc, epoch)
+
+    logger.info(f'Epoch {epoch+1} completed. Average Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
     
-    # Log epoch-level metrics to TensorBoard
-    writer.add_scalar('Training/Epoch_Loss', epoch_loss, epoch)
-    writer.add_scalar('Training/Epoch_Accuracy', epoch_acc, epoch)
-    
-    return epoch_loss, epoch_acc
+    return epoch_acc, epoch_loss
 
 
-
-def validate_model(model, val_loader, criterion, device, epoch, writer, logger, class_names):
-    """Validates the model on the validation set."""
+def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, class_names):
+    """Validate the model for one epoch."""
     model.eval()
     total_loss = 0
-    correct_preds = 0
     total_samples = 0
-    
-    y_true, y_pred = [], []
+    total_correct = 0
+
+    y_true = []
+    y_pred = []
     
     with torch.no_grad():
-        for inputs, targets in val_loader:
+        for idx, (inputs, targets) in enumerate(val_loader):
             inputs, targets = inputs.to(device), targets.to(device)
 
             with autocast(dtype=torch.float16):
@@ -106,32 +107,30 @@ def validate_model(model, val_loader, criterion, device, epoch, writer, logger, 
                 loss = criterion(outputs, targets)
 
             total_loss += loss.item()
+            total_samples += inputs.size(0)
 
-            # For metrics
-            predicted = outputs.argmax(dim=1)
-            target_class = targets.argmax(dim=1)
-            total_samples += targets.size(0)
-            correct_preds += predicted.eq(target_class).sum().item()
+            outputs = outputs.argmax(dim=1)
+            target = targets.argmax(dim=1) if targets.ndim > 1 else targets
+
+            total_correct += outputs.eq(target).sum().item()
+
+            y_true.extend(target.cpu().numpy())
+            y_pred.extend(outputs.cpu().numpy())
             
-            y_true.extend(target_class.cpu().numpy())
-            y_pred.extend(predicted.cpu().numpy())
-            
-    avg_loss = total_loss / len(val_loader)
-    accuracy = 100. * correct_preds / total_samples
-    f1 = get_f1_score(y_true, y_pred, average="weighted")
-    
-    logger.info(f"Epoch {epoch+1} | Valid Loss: {avg_loss:.4f} | Accuracy: {accuracy:.2f}% | F1 Score: {f1:.4f}")
-    writer.add_scalar('Validation/Loss', avg_loss, epoch)
-    writer.add_scalar('Validation/Accuracy', accuracy, epoch)
-    writer.add_scalar('Validation/F1_Score', f1, epoch)
-    
-    fig = plot_confusion_matrix(y_true, y_pred, class_names, save_path=None)
-    writer.add_figure('Validation/Confusion_Matrix', fig, epoch)
-    
-    return avg_loss, accuracy
+    val_loss = total_loss / len(val_loader)
+    val_acc = 100. * total_correct / total_samples
+    f1 = get_f1_score(y_pred, y_true, average="weighted")
+
+    writer.add_scalar("Loss/val/epoch", val_loss, epoch)
+    writer.add_scalar("Accuracy/val/epoch", val_acc, epoch)
+    writer.add_scalar("F1/val/epoch", f1, epoch)
+
+    logger.info(f'Validation Epoch {epoch+1} completed. Average Loss: {val_loss:.4f}, Accuracy: {val_acc:.2f}%, F1 Score: {f1:.2f}')
+
+    return val_acc, val_loss
 
 
-def fit(config_path, checkpoint_path=None, resume_train_path=None):
+def fit(config_path, best_model_path=None, resume_train_path=None):
     """
     Main function to orchestrate the model training process.
     """
@@ -140,7 +139,7 @@ def fit(config_path, checkpoint_path=None, resume_train_path=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     person_model = PersonClassifier().to(device)
-    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    checkpoint = torch.load(best_model_path, map_location=device, weights_only=False)
     person_model.load_state_dict(checkpoint["model_state_dict"])
 
     start_epoch = 0
@@ -157,14 +156,14 @@ def fit(config_path, checkpoint_path=None, resume_train_path=None):
     else:
         # Starting a new experiment (start train)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        exp_name = f"{config.experiment.name_group}_V{config.experiment.version}_{timestamp}"
+        exp_name = f"{config.experiment.name_group_activity}_V{config.experiment.version}_{timestamp}"
         exp_dir = os.path.join('/kaggle/working/', exp_name)
         os.makedirs(exp_dir, exist_ok=True)
         logger = setup_logging(exp_dir)
         logger.info(f"Starting new experiment: {exp_name}")
         
     writer = SummaryWriter(log_dir=os.path.join(exp_dir, 'tensorboard'))
-    logger.info(f"Using device: {device}. Seed: {config.experiment.seed}")
+    logger.info(f"Using device: {device}. Seed: {config.system.seed}")
 
 
     if not resume_train_path: # Initialize if not loaded from checkpoint
@@ -205,7 +204,7 @@ def fit(config_path, checkpoint_path=None, resume_train_path=None):
         crops=True,
         videos_path=config.data.videos_path,
         annot_path=config.data.annot_path,
-        split=config.data.video_splits.train, # Use clips 1 and 2 for this set
+        split=config.data.video_splits.train, 
         labels=ACTIVITIES_LABELS['group'],
         transform=train_transforms
     )
@@ -214,7 +213,7 @@ def fit(config_path, checkpoint_path=None, resume_train_path=None):
         crops=True,
         videos_path=config.data.videos_path,
         annot_path=config.data.annot_path,
-        split=config.data.video_splits.validation, # Use clips 1 and 2 for this set
+        split=config.data.video_splits.validation,
         labels=ACTIVITIES_LABELS['group'],
         transform=val_transforms
     )
@@ -248,10 +247,9 @@ def fit(config_path, checkpoint_path=None, resume_train_path=None):
     for epoch in range(start_epoch, config.training.epochs):
         logger.info(f"\n--- Epoch {epoch+1}/{config.training.epochs} ---")
         
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, epoch, writer, logger)
-        logger.info(f"Epoch {epoch+1} | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
+        train_loss, train_acc = train_one_epoch(scaler, writer, logger, model, train_loader, criterion, optimizer, device, epoch)
 
-        val_loss, val_acc = validate_model(model, val_loader, criterion, device, epoch, writer, logger, config.dataset.label_classes.group_activity)
+        val_acc, val_loss = val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, config.dataset.label_classes.group_activity)
 
         scheduler.step(val_loss)
         
@@ -282,11 +280,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Group Activity Script")
 
     parser.add_argument('--config_path', type=str, default=CONFIG_PATH, required=True, help="Path to the config file")
-    parser.add_argument('--checkpoint_path', type=str, default=CHECKPOINT_PATH, help="Path to the checkpoint file to load the pretrained person model")
+    parser.add_argument('--best_model_path', type=str, default=CHECKPOINT_PATH, help="Path to the checkpoint file to load the pretrained person model")
     parser.add_argument('--resume_train_path', type=str, default=RESUME_TRAIN_PATH, help="Path to the checkpoint file to resume training")
     args = parser.parse_args()
 
     # run all in fit fun
-    fit(args.config_path, checkpoint_path=args.checkpoint_path, resume_train_path=args.resume_train_path)
+    fit(args.config_path, best_model_path=args.best_model_path, resume_train_path=args.resume_train_path)
 
 

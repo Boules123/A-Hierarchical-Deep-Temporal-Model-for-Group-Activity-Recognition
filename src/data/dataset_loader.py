@@ -117,16 +117,20 @@ class PersonActionDataset(BaseDataset):
                             })
         return indices
 
-    def _get_person_crop(self, frame: np.ndarray, box: BoxInfo) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _get_person_crop(self, frame: np.ndarray, box: Any) -> Tuple[torch.Tensor, torch.Tensor]:
         """Extracts and transforms a single person crop and its label."""
         x_min, y_min, x_max, y_max = box.box
         person_crop = frame[y_min:y_max, x_min:x_max]
         
         if self.transform:
-            person_crop = self.transform(image=person_crop)['image']
+            # The transform handles the conversion to a tensor
+            crop_tensor = self.transform(image=person_crop)['image']
+        else:
+            # Manually convert if no transform is present
+            crop_tensor = torch.from_numpy(person_crop).permute(2, 0, 1)
         
         label = self._create_one_hot_label(box.category)
-        return torch.from_numpy(person_crop).permute(2, 0, 1), label
+        return crop_tensor, label
 
     def __getitem__(self, idx: int):
         sample = self.data_samples[idx]
@@ -141,6 +145,7 @@ class PersonActionDataset(BaseDataset):
                 frame_crops, frame_labels = [], []
                 
                 for box in boxes:
+                    # The helper function now correctly handles the transform
                     crop, label = self._get_person_crop(frame, box)
                     frame_crops.append(crop)
                     frame_labels.append(label)
@@ -154,9 +159,9 @@ class PersonActionDataset(BaseDataset):
 
         else:
             frame = self._load_frame(sample['video_id'], sample['clip_dir'], sample['frame_id'])
+            # The helper function now correctly handles the transform
             crop, label = self._get_person_crop(frame, sample['box'])
             return crop, label
-
             
 
 #Group activity class

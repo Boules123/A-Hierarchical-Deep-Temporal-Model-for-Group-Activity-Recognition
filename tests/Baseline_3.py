@@ -33,15 +33,6 @@ def collate_fn(batch):
     return torch.stack(padded_clips), torch.stack(padded_labels)
 
 
-def log_results(metrics):
-    print("\n--- Test Results ---")
-    print(f"Accuracy: {metrics.get('accuracy', 'N/A'):.4f}")
-    print(f"Average Loss: {metrics.get('avg_loss', 'N/A'):.4f}")
-    print(f"F1 Score (Weighted): {metrics.get('f1_score', 'N/A'):.4f}")
-    print("\n--- Classification Report ---")
-    print(metrics.get('report_dict', 'Not available.'))
-
-
 def test_model(args):
     config = load_config(args.config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -67,16 +58,17 @@ def test_model(args):
     ])
 
     test_dataset = GroupActivityDataset(
+        crops=True,
         videos_path=config.data.videos_path,
         annot_path=config.data.annot_path,
-        split=config.data.video_splits.test,
+        split=config.data.video_splits.validation,
         labels=ACTIVITIES_LABELS['group'],
         transform=val_transform
     )
     
     test_loader = DataLoader(
         dataset=test_dataset,
-        batch_size=config.training.batch_size,
+        batch_size=config.training.group_activity.batch_size,
         shuffle=False,
         num_workers=config.system.num_workers, 
         collate_fn=collate_fn
@@ -88,12 +80,14 @@ def test_model(args):
         data_loader=test_loader, 
         device=device,
         criterion=criterion,
-        class_names=config.dataset.label_classes,
+        class_names=config.dataset.label_classes.group_activity,
         output_path=None,
         baseline="B3"
     )
     
-    log_results(metrics)
+    print("--- Test Results ---\n")
+    print(metrics.get('report_text', 'Not available.'))
+
 
 
 if __name__ == "__main__":
