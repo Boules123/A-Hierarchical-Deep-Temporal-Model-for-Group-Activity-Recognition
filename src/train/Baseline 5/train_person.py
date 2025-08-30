@@ -35,10 +35,8 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
 
 
-
 def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer, device, epoch):
     """Train the model for one epoch."""
-    
     model.train()
     total_loss = 0
     total_samples = 0
@@ -58,7 +56,7 @@ def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer,
         scaler.update()
         
         total_loss += loss.item()
-        total_samples += inputs.size(0)
+        total_samples += targets.size(0)
         
         outputs = outputs.argmax(dim=1)
         target = targets.argmax(dim=1) if targets.ndim > 1 else targets
@@ -79,11 +77,9 @@ def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer,
         epoch_acc = 100. * total_correct / total_samples
         writer.add_scalar("Accuracy/train/epoch", epoch_acc, epoch)
 
-    logger.info(f'Epoch {epoch+1} completed. Average Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
+    logger.info(f'Training Epoch {epoch+1} completed. Average Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
     
     return epoch_acc, epoch_loss
-
-
 
 
 def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, class_names):
@@ -105,7 +101,7 @@ def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, c
                 loss = criterion(outputs, targets)
 
             total_loss += loss.item()
-            total_samples += inputs.size(0)
+            total_samples += targets.size(0)
 
             outputs = outputs.argmax(dim=1)
             target = targets.argmax(dim=1) if targets.ndim > 1 else targets
@@ -126,6 +122,7 @@ def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, c
     logger.info(f'Validation Epoch {epoch+1} completed. Average Loss: {val_loss:.4f}, Accuracy: {val_acc:.2f}%, F1 Score: {f1:.2f}')
 
     return val_acc, val_loss
+
 
 def fit(config_path, resume_train=None):
     """
@@ -156,15 +153,14 @@ def fit(config_path, resume_train=None):
         logger.info(f"Starting new experiment: {exp_name}")
         
     writer = SummaryWriter(log_dir=os.path.join(exp_dir, 'tensorboard'))
-    logger.info(f"Using device: {device}. Seed: {config.experiment.seed}")
+    logger.info(f"Using device: {device}. Seed: {config.system.seed}")
     
     if not resume_train: 
         model = PersonTempClassifier(input_dim=2048, hidden_dim=512)
         model = model.to(device)
         optimizer = optim.AdamW(
             model.parameters(),
-            lr=config.training.learning_rate,
-            weight_decay=config.training.person_activity.weight_decay
+            lr=config.training.lr
         )
     
     train_transforms = A.Compose([
@@ -239,10 +235,9 @@ def fit(config_path, resume_train=None):
     for epoch in range(start_epoch, config.training.epochs):
         logger.info(f"\n--- Epoch {epoch+1}/{config.training.epochs} ---")
         
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, epoch, writer, logger)
-        logger.info(f"Epoch {epoch+1} | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
+        train_acc, train_loss = train_one_epoch(scaler, writer, logger, model, train_loader, criterion, optimizer, device, epoch)
 
-        val_loss, val_acc = validate_model(model, val_loader, criterion, device, epoch, writer, logger, config.dataset.label_classes.person_activity)
+        val_acc, val_loss = val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, config.dataset.label_classes.person_activity)
 
         scheduler.step(val_loss)
         
@@ -253,7 +248,7 @@ def fit(config_path, resume_train=None):
         
         # Save checkpoint
         save_checkpoint({
-            'epoch': epoch,
+            'epoch': epoch+1,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'val_acc': val_acc,

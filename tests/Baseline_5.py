@@ -38,15 +38,6 @@ def group_collate_fn(batch):
     return padded_clips, labels
 
 
-def log_results(metrics):
-    print("\n--- Test Results ---")
-    print(f"Accuracy: {metrics.get('accuracy', 'N/A'):.4f}")
-    print(f"Average Loss: {metrics.get('avg_loss', 'N/A'):.4f}")
-    print(f"F1 Score (Weighted): {metrics.get('f1_score', 'N/A'):.4f}")
-    print("\n--- Classification Report ---")
-    print(metrics.get('report_dict', 'Not available.'))
-
-
 def test_model(args):
     config = load_config(args.config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -85,7 +76,7 @@ def test_model(args):
         dataset=test_dataset,
         batch_size=config.training.batch_size,
         shuffle=False,
-        num_workers=config.system.num_workers, 
+        num_workers=4, 
         collate_fn=group_collate_fn
     )
     
@@ -95,12 +86,12 @@ def test_model(args):
         data_loader=test_loader, 
         device=device,
         criterion=criterion,
-        class_names=config.dataset.label_classes,
+        class_names=config.dataset.label_classes.group_activity,
         output_path=None,
         baseline="B5"
     )
     
-    log_results(metrics)
+    print(metrics.get('report_text', 'Not available.'))
 
 
 if __name__ == "__main__":

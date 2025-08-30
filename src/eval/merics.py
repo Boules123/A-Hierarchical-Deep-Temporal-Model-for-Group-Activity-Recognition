@@ -57,7 +57,6 @@ def evaluate_model(
     class_names = None,
     output_path = None,
     baseline = None
-    
 ) :
     """
     Evaluates the model.
@@ -72,6 +71,9 @@ def evaluate_model(
             inputs, targets = inputs.to(device), targets.to(device)
 
             outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            
+            total_loss += loss.item()
             
             pred = outputs.argmax(dim=1)
             target = targets.argmax(dim=1)
@@ -79,14 +81,11 @@ def evaluate_model(
             y_true.extend(target.cpu().numpy())
             y_pred.extend(pred.cpu().numpy())
             
-            if criterion:
-                loss = criterion(outputs, targets)
-                total_loss += loss.item()
+            
 
-    avg_loss = total_loss / len(data_loader) if criterion and len(data_loader) > 0 else None
+    avg_loss = total_loss / len(data_loader)
     accuracy = accuracy_score(y_true, y_pred) * 100
     weighted_f1 = get_f1_score(y_true, y_pred, average='weighted')
-    report_dict = classification_report(y_true, y_pred, target_names=class_names, output_dict=True, zero_division=0)
     report_text = classification_report(y_true, y_pred, target_names=class_names, output_dict=False, zero_division=0)
 
     print(f"{'Accuracy':<20}: {accuracy:.2f}%")
@@ -104,7 +103,6 @@ def evaluate_model(
         "accuracy": accuracy,
         "avg_loss": avg_loss,
         "f1_score": weighted_f1,
-        "report_dict": report_dict,
         "report_text": report_text
     }
     return metrics

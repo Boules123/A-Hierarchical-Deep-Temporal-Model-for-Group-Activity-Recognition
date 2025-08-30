@@ -41,7 +41,6 @@ training:
   patience: 5
 
   person_activity: 
-  batch_size: 2
-  
+    batch_size: 2
   group_activity:
     batch_size: 16

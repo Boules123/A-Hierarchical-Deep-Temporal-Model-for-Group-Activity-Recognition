@@ -35,7 +35,6 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-
 def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer, device, epoch):
     """Train the model for one epoch."""
     
@@ -58,7 +57,7 @@ def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer,
         scaler.update()
         
         total_loss += loss.item()
-        total_samples += inputs.size(0)
+        total_samples += targets.size(0)
         
         outputs = outputs.argmax(dim=1)
         target = targets.argmax(dim=1) if targets.ndim > 1 else targets
@@ -79,11 +78,9 @@ def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer,
         epoch_acc = 100. * total_correct / total_samples
         writer.add_scalar("Accuracy/train/epoch", epoch_acc, epoch)
 
-    logger.info(f'Epoch {epoch+1} completed. Average Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
+    logger.info(f'Training Epoch {epoch+1} completed. Average Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
     
     return epoch_acc, epoch_loss
-
-
 
 
 def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, class_names):
@@ -105,7 +102,7 @@ def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, c
                 loss = criterion(outputs, targets)
 
             total_loss += loss.item()
-            total_samples += inputs.size(0)
+            total_samples += targets.size(0)
 
             outputs = outputs.argmax(dim=1)
             target = targets.argmax(dim=1) if targets.ndim > 1 else targets
@@ -128,7 +125,7 @@ def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, c
     return val_acc, val_loss
 
 
-def fit(config_path, checkpoint_path=None, resume_train=None):
+def fit(config_path, best_model_path=None, resume_train=None):
     """
     Main function to orchestrate the model training process.    
     """
@@ -137,7 +134,7 @@ def fit(config_path, checkpoint_path=None, resume_train=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     person_model = PersonClassifier().to(device)
-    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    checkpoint = torch.load(best_model_path, map_location=device, weights_only=False)
     person_model.load_state_dict(checkpoint["model_state_dict"])
 
     start_epoch = 0
@@ -161,7 +158,7 @@ def fit(config_path, checkpoint_path=None, resume_train=None):
         logger.info(f"Starting new experiment: {exp_name}")
         
     writer = SummaryWriter(log_dir=os.path.join(exp_dir, 'tensorboard'))
-    logger.info(f"Using device: {device}. Seed: {config.experiment.seed}")
+    logger.info(f"Using device: {device}. Seed: {config.system.seed}")
     
     config_save_path = os.path.join(exp_dir, 'config.yml')
     with open(config_save_path, 'w') as f:
@@ -212,6 +209,8 @@ def fit(config_path, checkpoint_path=None, resume_train=None):
     )
     
     val_dataset = GroupActivityDataset(
+        crops=True,
+        seq=True,
         videos_path=config.data.videos_path,
         annot_path=config.data.annot_path,
         split=config.data.video_splits.validation,
@@ -248,10 +247,9 @@ def fit(config_path, checkpoint_path=None, resume_train=None):
     for epoch in range(start_epoch, config.training.epochs):
         logger.info(f"\n--- Epoch {epoch+1}/{config.training.epochs} ---")
         
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, epoch, writer, logger)
-        logger.info(f"Epoch {epoch+1} | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
+        train_acc, train_loss = train_one_epoch(scaler, writer, logger, model, train_loader, criterion, optimizer, device, epoch)
 
-        val_loss, val_acc = validate_model(model, val_loader, criterion, device, epoch, writer, logger, config.dataset.label_classes.group_activity)
+        val_acc, val_loss = val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, config.dataset.label_classes.group_activity)
 
         scheduler.step(val_loss)
         
@@ -262,7 +260,7 @@ def fit(config_path, checkpoint_path=None, resume_train=None):
 
         # Save checkpoint
         save_checkpoint({
-            'epoch': epoch,
+            'epoch': epoch+1,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'val_acc': val_acc,
@@ -282,12 +280,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Group Activity Script")
 
     parser.add_argument('--config_path', type=str, required=True, help="Path to the config file")
-    parser.add_argument('--checkpoint_path', type=str, default=None, help="Path to the checkpoint file to load the pretrained person model")
+    parser.add_argument('--best_model_path', type=str, default=None, help="Path to the checkpoint file to load the pretrained person model")
     parser.add_argument('--resume_train', type=str, default=None, help="Path to the checkpoint file to resume training")
     args = parser.parse_args()
 
-    # run all in fit fun 
-    fit(args.config_path, checkpoint_path=args.checkpoint_path, resume_train=args.resume_train)
+    # run all in fit fun
+    fit(args.config_path, best_model_path=args.best_model_path, resume_train=args.resume_train)
 
 
 

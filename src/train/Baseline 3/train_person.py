@@ -33,7 +33,6 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-
 def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer, device, epoch):
     """Train the model for one epoch."""
     
@@ -56,7 +55,7 @@ def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer,
         scaler.update()
         
         total_loss += loss.item()
-        total_samples += inputs.size(0)
+        total_samples += targets.size(0)
         
         outputs = outputs.argmax(dim=1)
         target = targets.argmax(dim=1) if targets.ndim > 1 else targets
@@ -82,8 +81,6 @@ def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer,
     return epoch_acc, epoch_loss
 
 
-
-
 def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, class_names):
     """Validate the model for one epoch."""
     model.eval()
@@ -103,7 +100,7 @@ def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, c
                 loss = criterion(outputs, targets)
 
             total_loss += loss.item()
-            total_samples += inputs.size(0)
+            total_samples += targets.size(0)
 
             outputs = outputs.argmax(dim=1)
             target = targets.argmax(dim=1) if targets.ndim > 1 else targets
@@ -234,7 +231,7 @@ def fit(config_path, resume_train=None):
     for epoch in range(start_epoch, config.training.epochs):
         logger.info(f"\n--- Epoch {epoch+1}/{config.training.epochs} ---")
         
-        train_loss, train_acc = train_one_epoch(scaler, writer, logger, model, train_loader, criterion, optimizer, device, epoch)
+        train_acc, train_loss = train_one_epoch(scaler, writer, logger, model, train_loader, criterion, optimizer, device, epoch)
 
         val_acc, val_loss = val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, config.dataset.label_classes.group_activity)
 

@@ -44,6 +44,7 @@ class SceneClassifier_B3(nn.Module):
         x = self.pooling(x).squeeze(-1)     #[b, 2048]
         return self.fc(x)    #[b, num_classes]
 
+# group activity classifier model for B5
 class SceneClassifier_B5(nn.Module):
     def __init__(self, player_classifier_model, num_classes=8):
         super(SceneClassifier_B5, self).__init__()
@@ -52,12 +53,14 @@ class SceneClassifier_B5(nn.Module):
         self.resnet50 = player_classifier_model.backbone
         self.lstm = player_classifier_model.lstm
 
-        for module in [self.resnet50,  self.lstm]:
-            for param in module.parameters():
-                param.requires_grad = False
-
+        for param in self.resnet50.parameters():
+            param.requires_grad = False
+        
+        for param in self.lstm.parameters():
+            param.requires_grad = False
+        
         # max pool over 12 players [b, 12, hidden_size] -> [b, 1, 2048]
-        self.pool = nn.AdaptiveMaxPool2d((1, 2048))  
+        self.pool = nn.AdaptiveMaxPool2d((1, 2048))
 
         self.fc = nn.Sequential(
             nn.Linear(2048, 512),
@@ -70,17 +73,17 @@ class SceneClassifier_B5(nn.Module):
     def forward(self, x):
         b, n, t, c, h, w = x.shape 
         x = x.view(b*n*t, c, h, w) # [b*n*t, c, h, w]
-        x1 = self.resnet50(x) # [b * n * t, 2048, 1 , 1]
+        x = self.resnet50(x) # [b * n * t, 2048, 1 , 1]
 
-        x1 = x1.view(b*n, t, -1) #[b * n, t, 2048]
-        x2, (h , c) = self.lstm(x1) # [b * n, t, hidden_size]
+        x = x.view(b*n, t, -1) #[b * n, t, 2048]
+        out, (h , c) = self.lstm(x) # [b * n, t, hidden_size]
 
-        x = torch.cat([x1, x2], dim=2) # Concat the visual representation and temporal representation
+        x = torch.cat([x, out], dim=2) # Concat the visual representation and temporal representation
         x = x.contiguous()
-        x = x[:, -1, :]   # [b*n, hidden_size+2048]
+        x = x[:, -1, :]   # [b*n, hidden_size + 2048]
 
         x = x.view(b, n, -1) # [b, n, hidden_size + 2048]
-        x = self.pool(x) # [b, 1, 2048]
+        x = self.pool(x) #[b, 1 , 2048]
         x = x.squeeze(dim=1) # [b, 2048]
 
         x = self.fc(x) # [b, num_classes]
