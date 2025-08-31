@@ -3,20 +3,19 @@ import torch
 
 def collate_fn(batch):
     """
-    collate to keep the same size of  12 player per frame.
+    Collate function to ensure each frame has 12 players.
+    Pads with zeros if fewer than 12 are present.
     """
     clips, labels = zip(*batch)
     
+    max_players = 12
     padded_clips = []
     padded_labels = []
-    
+
     for clip, label in zip(clips, labels):
-        # Pad clip to 12 player if needed
-        if clip.size(0) < 12:
-            padding_size = 12 - clip.size(0)
-            padding = torch.zeros(padding_size, *clip.shape[1:])
-            clip = torch.cat([clip, padding])
-        
+        if clip.size(0) < max_players:
+            padding = torch.zeros(max_players - clip.size(0), *clip.shape[1:], dtype=clip.dtype)
+            clip = torch.cat([clip, padding], dim=0)
         padded_clips.append(clip)
         padded_labels.append(label)
     

@@ -33,15 +33,17 @@ training:
   patience: 10
   learning_rate: 0.0001
   optimizer: "AdamW" 
-  epochs: 10
+  
   log_interval: 50 
 
   person_activity:
+    epochs: 10
     batch_size: 128
     weight_decay: 0.01
     label_smoothing: 0.1     
   
   group_activity:
+    epochs: 30
     batch_size: 32
     weight_decay: 0.01
     label_smoothing: 0.1 

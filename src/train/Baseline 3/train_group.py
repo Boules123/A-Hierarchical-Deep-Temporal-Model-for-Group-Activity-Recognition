@@ -83,7 +83,7 @@ def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer,
         epoch_acc = 100. * total_correct / total_samples
         writer.add_scalar("Accuracy/train/epoch", epoch_acc, epoch)
 
-    logger.info(f'Epoch {epoch+1} completed. Average Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
+    logger.info(f'training Epoch {epoch+1} completed. Average Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
     
     return epoch_acc, epoch_loss
 
