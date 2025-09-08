@@ -143,7 +143,7 @@ class SceneTempClassifier_B8(nn.Module):
         super(SceneTempClassifier_B8, self).__init__()
         
         self.feature_extract = person_classifier_model.backbone
-        self.lstm_person = person_classifier_model.lstm_person
+        self.lstm_person = person_classifier_model.lstm
         
         for param in self.feature_extract.parameters():
             param.requires_grad = False
@@ -151,10 +151,10 @@ class SceneTempClassifier_B8(nn.Module):
         for param in self.lstm_person.parameters():
             param.requires_grad = False
             
-        self.pooling = nn.AdaptiveMaxPool1d(1)
+        self.pooling = nn.AdaptiveMaxPool2d((1, 2048))
 
         self.lstm_group = nn.LSTM(
-            input_size=5120, 
+            input_size=4096, 
             hidden_size=512,
             num_layers=1,
             batch_first=True
@@ -189,13 +189,16 @@ class SceneTempClassifier_B8(nn.Module):
         left_team = out[:, :6, :]   #[b*t, 6, 2560]
         right_team = out[:, 6:, :]  #[b*t, 6, 2560]
         
-        left_team = self.pooling(left_team.permute(0, 2, 1)).squeeze(-1)    #[b*t, 2560]
-        right_team = self.pooling(right_team.permute(0, 2, 1)).squeeze(-1)  #[b*t, 2560]
+        # left_team = self.pooling(left_team.permute(0, 2, 1)).squeeze(-1)    #[b*t, 2560]
+        # right_team = self.pooling(right_team.permute(0, 2, 1)).squeeze(-1)  #[b*t, 2560]
         
-        x = torch.cat([left_team, right_team], dim=1)   #[b*t, 5120]
+        left_team = self.pooling(left_team).squeeze(1)    #[b*t, 2048]
+        right_team = self.pooling(right_team).squeeze(1)  #[b*t, 2048]
+        
+        x = torch.cat([left_team, right_team], dim=1)   #[b*t, 4096]
         x = x.contiguous()
-        x = x.view(b, t, -1)             #[b, t, 5120]
-        out_group, (_, _) = self.lstm_group(x) #[b, t, 512]
+        x = x.view(b, t, -1)             #[b, t, 4096]
+        out_group, (_, _) = self.lstm_group(x) #[b, t, 4096]
         
         out_group = out_group[:, -1, :]     #[b, 512]
         x = self.fc(out_group)              #[b, num_classes]

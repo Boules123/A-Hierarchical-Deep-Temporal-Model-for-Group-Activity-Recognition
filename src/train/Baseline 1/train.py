@@ -117,7 +117,7 @@ def val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, c
     writer.add_scalar("Accuracy/val/epoch", val_acc, epoch)
     writer.add_scalar("F1/val/epoch", f1, epoch)
 
-    logger.info(f'Validation Epoch {epoch+1} completed. Average Loss: {val_loss:.4f}, Accuracy: {val_acc:.2f}%, F1 Score: {f1:.2f}')
+    logger.info(f'Validation Epoch {epoch+1} completed. Average Loss: {val_loss:.4f}, Accuracy: {val_acc:.2f}%, F1 Score: {f1:.4f}')
 
     return val_acc, val_loss
 
@@ -131,7 +131,8 @@ def fit(config_path, resume_train=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     start_epoch = 0
-    best_val_acc = 0
+    best_val_loss = float('inf')
+    
     if resume_train:
         # Resuming from a checkpoint (resume train)
         model = SceneClassifier_B1()
@@ -237,11 +238,11 @@ def fit(config_path, resume_train=None):
         scheduler.step(val_loss)
         
         # Save checkpoint
-        is_best = val_acc > best_val_acc
+        is_best = val_loss < best_val_loss
         if is_best:
-            best_val_acc = val_acc
-            logger.info(f"New best validation accuracy: {best_val_acc:.2f}%! Saving model...")
-        
+            best_val_loss = val_loss
+            logger.info(f"New best Val loss: {best_val_loss:.4f}! | Val Acc: {val_acc:.4f}% Saving model...")
+
         save_checkpoint({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),

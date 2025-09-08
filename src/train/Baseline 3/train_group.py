@@ -22,7 +22,7 @@ from collate_fn import collate_fn
 from models import PersonClassifier, SceneClassifier_B3
 from utils import (load_config, load_checkpoint,
                      save_checkpoint, setup_logging)
-from eval import (get_f1_score, plot_confusion_matrix)
+from eval import get_f1_score
 
 def set_seed(seed):
     """Set random seeds for reproducibility."""
@@ -83,7 +83,7 @@ def train_one_epoch(scaler, writer, logger, model, loader, criterion, optimizer,
         epoch_acc = 100. * total_correct / total_samples
         writer.add_scalar("Accuracy/train/epoch", epoch_acc, epoch)
 
-    logger.info(f'training Epoch {epoch+1} completed. Average Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
+    logger.info(f'training Epoch {epoch+1} completed. Average Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.4f}%')
     
     return epoch_acc, epoch_loss
 
@@ -143,7 +143,8 @@ def fit(config_path, best_model_path=None, resume_train_path=None):
     person_model.load_state_dict(checkpoint["model_state_dict"])
 
     start_epoch = 0
-    best_val_acc = 0
+    best_val_loss = float('inf')
+    
     if resume_train_path:
         # Resuming from a checkpoint (resume train)
         model = SceneClassifier_B3(person_model)
@@ -252,15 +253,15 @@ def fit(config_path, best_model_path=None, resume_train_path=None):
         val_acc, val_loss = val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, config.dataset.label_classes.group_activity)
 
         scheduler.step(val_loss)
-        
-        is_best = val_acc > best_val_acc
+
+        is_best = val_loss < best_val_loss
         if is_best:
-            best_val_acc = val_acc
-            logger.info(f"New best validation accuracy: {best_val_acc:.2f}%! Saving model...")
-        
+            best_val_loss = val_loss
+            logger.info(f"New best validation loss: {best_val_loss:.4f}! | Val Acc: {val_acc:.4f}% Saving model...")
+
         # Save checkpoint
         save_checkpoint({
-            'epoch': epoch,
+            'epoch': epoch+1,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'val_acc': val_acc,
