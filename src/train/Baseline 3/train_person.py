@@ -228,12 +228,12 @@ def fit(config_path, resume_train=None):
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5)
     
     logger.info("Starting training process")
-    for epoch in range(start_epoch, config.training.epochs):
-        logger.info(f"\n--- Epoch {epoch+1}/{config.training.epochs} ---")
+    for epoch in range(start_epoch, config.training.person_activity.epochs):
+        logger.info(f"\n--- Epoch {epoch+1}/{config.training.person_activity.epochs} ---")
         
         train_acc, train_loss = train_one_epoch(scaler, writer, logger, model, train_loader, criterion, optimizer, device, epoch)
 
-        val_acc, val_loss = val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, config.dataset.label_classes.group_activity)
+        val_acc, val_loss = val_one_epoch(writer, logger, model, val_loader, criterion, device, epoch, config.dataset.label_classes.person_activity)
 
         scheduler.step(val_loss)
 
