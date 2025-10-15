@@ -242,11 +242,11 @@ def fit(config_path, best_model_path=None, resume_train_path=None):
 
     criterion = nn.CrossEntropyLoss()
     scaler = GradScaler()
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3)
     
     logger.info("Starting training process...")
-    for epoch in range(start_epoch, config.training.epochs):
-        logger.info(f"\n--- Epoch {epoch+1}/{config.training.epochs} ---")
+    for epoch in range(start_epoch, config.training.group_activity.epochs):
+        logger.info(f"\n--- Epoch {epoch+1}/{config.training.group_activity.epochs} ---")
 
         train_acc, train_loss = train_one_epoch(scaler, writer, logger, model, train_loader, criterion, optimizer, device, epoch)
 
